@@ -169,7 +169,7 @@ header .nav button{width:30px; height:30px; border-radius:50%; font-size:15px;
 .note.ke .who,.note.yunke .who{color:var(--harebell); background:var(--harebell-soft); transform:rotate(2deg)}
 .note p{margin:0; font-family:"Kaiti SC","STKaiti","KaiTi",serif; font-size:15px; line-height:1.85}
 .note .kind-tag{font-size:10px; color:var(--sub); letter-spacing:.15em; margin-right:6px}
-.daytodos{margin-top:12px; border-top:1px dashed var(--line-soft); padding-top:8px}
+.daytodos{margin:12px 0 2px; border-top:1px dashed var(--line-soft); padding-top:8px}
 .daytodos .cap{font-size:10.5px; letter-spacing:.2em; color:var(--sub); margin-bottom:2px}
 
 .writer{display:flex; gap:7px; margin-top:12px}
@@ -265,6 +265,20 @@ footer{text-align:center; font-size:11px; color:var(--sub); letter-spacing:.15em
       onchange="post('/act/symptoms',{date:'{{d.date}}',symptoms:this.value},false)">
   </div>
 
+  {% set daytodos = d.notes | selectattr('kind','equalto','todo') | list %}
+  <div class="daytodos">
+    <div class="cap">当日待办</div>
+    {% for t in daytodos %}
+    <div class="todo {{'done' if t.done}}" onclick="act('/act/todo_toggle',{id:{{t.id}}},'{{d.date}}')">
+      <div class="box">✓</div><div class="txt hand">{{t.content}}</div>
+    </div>
+    {% endfor %}
+    <div class="writer">
+      <input type="text" id="todo-{{d.date}}" placeholder="这天要做的事…">
+      <button onclick="addNote('todo', val('todo-{{d.date}}'), '{{d.date}}')">记下</button>
+    </div>
+  </div>
+
   <div class="shots">
     {% set slotname = {'brunch':'brunch','snack':'加餐','dinner':'晚饭','casual':'随手拍'} %}
     {% for p in d.photos %}
@@ -302,20 +316,6 @@ footer{text-align:center; font-size:11px; color:var(--sub); letter-spacing:.15em
     {% endfor %}
   </div>
   {% endif %}
-
-  {% set daytodos = d.notes | selectattr('kind','equalto','todo') | list %}
-  <div class="daytodos">
-    <div class="cap">当日待办</div>
-    {% for t in daytodos %}
-    <div class="todo {{'done' if t.done}}" onclick="act('/act/todo_toggle',{id:{{t.id}}},'{{d.date}}')">
-      <div class="box">✓</div><div class="txt hand">{{t.content}}</div>
-    </div>
-    {% endfor %}
-    <div class="writer">
-      <input type="text" id="todo-{{d.date}}" placeholder="这天要做的事…">
-      <button onclick="addNote('todo', val('todo-{{d.date}}'), '{{d.date}}')">记下</button>
-    </div>
-  </div>
 
   <div class="writer">
     <select id="kind-{{d.date}}">
