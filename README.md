@@ -91,6 +91,15 @@ echo "shouzhang.${IP_DASHED}.sslip.io {
 
 **人类的步骤**：去云控制台防火墙放行TCP 443（80、22通常默认开着）。然后访问 `https://shouzhang.<你的IP点换成横线>.sslip.io`，输口令进门，iPhone上"添加到主屏幕"。
 
+## 没有VPS？本地也能跑
+
+```bash
+python3 -m venv venv && ./venv/bin/pip install flask
+./venv/bin/python app.py   # 然后浏览器开 http://localhost:8787
+```
+
+初始化步骤同上（第3步）。手机连同一个wifi时用电脑的局域网IP访问；出门也想用的话，装个[Tailscale](https://tailscale.com)（免费）把手机和电脑组成私人网络，不暴露公网还省了HTTPS。代价是电脑睡觉手帐也睡觉，云端的AI伙伴摸不进本地电脑。什么时候想升级，整个文件夹拷去VPS就是搬家的全部。
+
 ## AI伙伴接入
 
 ```bash

@@ -334,6 +334,10 @@ def api_photo(pid):
         abort(404)
     return send_file(os.path.join(PHOTOS, r['date'], r['filename']))
 
+@app.route('/icon.png')
+def icon():
+    return send_file(os.path.join(BASE, 'icon.png'))
+
 @app.route('/api/health')
 def health():
     return jsonify(ok=True, ts=datetime.datetime.now().isoformat(timespec='seconds'))
