@@ -126,6 +126,8 @@ def day_payload(c, date):
             'symptoms': (day['symptoms'] if day else '') or '',
             'checks': checks, 'notes': notes, 'photos': photos}
 
+FUTURE_DAYS = 7  # 往后可见的预排页数
+
 @app.route('/')
 @web_auth
 def journal():
@@ -134,9 +136,9 @@ def journal():
     with db() as c:
         habits = [dict(r) for r in c.execute(
             'select * from habits where active=1 order by sort')]
-        d = datetime.date.fromisoformat(t)
+        d = datetime.date.fromisoformat(t) + datetime.timedelta(days=FUTURE_DAYS)
         dates = []
-        while d.isoformat() >= start and len(dates) < 60:
+        while d.isoformat() >= start and len(dates) < 60 + FUTURE_DAYS:
             dates.append(d.isoformat())
             d -= datetime.timedelta(days=1)
         days = [day_payload(c, x) for x in dates]
@@ -181,7 +183,7 @@ def act_battery():
         c.execute('insert into days(date,battery) values(?,?) '
                   'on conflict(date) do update set battery=?', (d, v, v))
     log_event('qiao', 'battery', d, str(v))
-    return jsonify(ok=True)
+    return jsonify(ok=True, value=v)
 
 @app.route('/act/period', methods=['POST'])
 @web_auth
@@ -295,6 +297,25 @@ def act_symptoms():
     log_event('qiao', 'symptoms', d, s[:80])
     return jsonify(ok=True)
 
+THUMB_W = 560  # 页面相框最大也就300px出头，560够2x屏
+
+def thumb_of(date, filename):
+    """返回缩略图路径；生成失败（格式不支持等）退回原图。"""
+    src = os.path.join(PHOTOS, date, filename)
+    tp = os.path.join(PHOTOS, date, '.thumb', filename + '.jpg')
+    if os.path.exists(tp) and os.path.getmtime(tp) >= os.path.getmtime(src):
+        return tp
+    try:
+        from PIL import Image, ImageOps
+        img = Image.open(src)
+        img = ImageOps.exif_transpose(img)
+        img.thumbnail((THUMB_W, THUMB_W * 2))
+        os.makedirs(os.path.dirname(tp), exist_ok=True)
+        img.convert('RGB').save(tp, 'JPEG', quality=82)
+        return tp
+    except Exception:
+        return src
+
 @app.route('/photo/<int:pid>')
 @web_auth
 def photo(pid):
@@ -302,7 +323,10 @@ def photo(pid):
         r = c.execute('select date,filename from photos where id=?', (pid,)).fetchone()
     if not r:
         abort(404)
-    return send_file(os.path.join(PHOTOS, r['date'], r['filename']))
+    full = request.args.get('full')
+    path = os.path.join(PHOTOS, r['date'], r['filename']) if full \
+        else thumb_of(r['date'], r['filename'])
+    return send_file(path, max_age=86400 * 30, conditional=True)
 
 # ── 桥（克与云克） ──
 @app.route('/api/day/<date>')
@@ -347,11 +371,12 @@ def api_photo(pid):
 
 @app.route('/icon.png')
 def icon():
-    return send_file(os.path.join(BASE, 'icon.png'))
+    return send_file(os.path.join(BASE, 'icon.png'), max_age=86400 * 7)
 
 @app.route('/api/health')
 def health():
     return jsonify(ok=True, ts=datetime.datetime.now().isoformat(timespec='seconds'))
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8787)
+    # threaded: 单线程时一张照片传输会堵死所有请求
+    app.run(host='127.0.0.1', port=8787, threaded=True)

@@ -40,7 +40,7 @@ git clone <本仓库> /home/ubuntu/shouzhang && cd /home/ubuntu/shouzhang
 
 # 2. 环境（Ubuntu 24需要python3-venv）
 sudo apt-get install -y python3.12-venv
-python3 -m venv venv && ./venv/bin/pip install flask
+python3 -m venv venv && ./venv/bin/pip install flask pillow
 
 # 3. 初始化：习惯栏目 + 口令（口令找人类要）
 ./venv/bin/python - <<'EOF'
@@ -94,7 +94,7 @@ echo "shouzhang.${IP_DASHED}.sslip.io {
 ## 没有VPS？本地也能跑
 
 ```bash
-python3 -m venv venv && ./venv/bin/pip install flask
+python3 -m venv venv && ./venv/bin/pip install flask pillow
 ./venv/bin/python app.py   # 然后浏览器开 http://localhost:8787
 ```
 

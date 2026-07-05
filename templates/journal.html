@@ -90,6 +90,7 @@ header .nav button{width:30px; height:30px; border-radius:50%; font-size:15px;
 .day .dmeta{font-size:12px; color:var(--sub); letter-spacing:.1em}
 .day .today-badge{margin-left:auto; font-size:11px; letter-spacing:.15em;
   color:var(--tangerine); border:1px solid currentColor; border-radius:999px; padding:1px 9px}
+.day .today-badge.future{color:var(--sub); border-style:dashed}
 
 .stamps{display:flex; flex-wrap:wrap; gap:10px 12px}
 .stamp{width:54px; text-align:center; cursor:pointer; -webkit-tap-highlight-color:transparent}
@@ -232,7 +233,7 @@ footer{text-align:center; font-size:11px; color:var(--sub); letter-spacing:.15em
 <div class="todobox">
   <div class="cap">置顶待办</div>
   {% for t in todos %}
-  <div class="todo {{'done' if t.done}}" onclick="post('/act/todo_toggle',{id:{{t.id}}},true)">
+  <div class="todo {{'done' if t.done}}" onclick="todoToggle({{t.id}},this)">
     <div class="box">✓</div><div class="txt hand">{{t.content}}</div>
   </div>
   {% endfor %}
@@ -251,7 +252,8 @@ footer{text-align:center; font-size:11px; color:var(--sub); letter-spacing:.15em
   <div class="head">
     <span class="dnum">{{d.date[8:]}}</span>
     <span class="dmeta">{{d.date[5:7]}}月 · {{d.weekday}}</span>
-    {% if d.date == today %}<span class="today-badge">今天</span>{% endif %}
+    {% if d.date == today %}<span class="today-badge">今天</span>
+    {% elif d.date > today %}<span class="today-badge future">预排</span>{% endif %}
   </div>
 
   <div class="stamps">
@@ -280,10 +282,10 @@ footer{text-align:center; font-size:11px; color:var(--sub); letter-spacing:.15em
     <span class="cells">
       {% for i in range(5) %}
       <span class="cell {{'on' if d.battery and i < d.battery}}"
-            onclick="act('/act/battery',{date:'{{d.date}}',value:{{i+1}}},'{{d.date}}')"></span>
+            onclick="battery('{{d.date}}',{{i+1}},this)"></span>
       {% endfor %}
     </span>
-    <span class="chip {{'on' if d.period}}" onclick="act('/act/period',{date:'{{d.date}}'},'{{d.date}}')">经期</span>
+    <span class="chip {{'on' if d.period}}" onclick="period('{{d.date}}',this)">经期</span>
   </div>
 
   <div class="body-row">
@@ -296,7 +298,7 @@ footer{text-align:center; font-size:11px; color:var(--sub); letter-spacing:.15em
   <div class="daytodos">
     <div class="cap">当日待办</div>
     {% for t in daytodos %}
-    <div class="todo {{'done' if t.done}}" onclick="act('/act/todo_toggle',{id:{{t.id}}},'{{d.date}}')">
+    <div class="todo {{'done' if t.done}}" onclick="todoToggle({{t.id}},this)">
       <div class="box">✓</div><div class="txt hand">{{t.content}}</div>
     </div>
     {% endfor %}
@@ -312,7 +314,7 @@ footer{text-align:center; font-size:11px; color:var(--sub); letter-spacing:.15em
     <div class="polaroid">
       <span class="slot-tag">{{slotname.get(p.slot, p.slot)}}</span>
       <button class="del" onclick="delPhoto({{p.id}},'{{d.date}}')">✕</button>
-      <div class="ph"><a href="/photo/{{p.id}}" target="_blank"><img src="/photo/{{p.id}}" alt="{{slotname.get(p.slot,'照片')}}"></a></div>
+      <div class="ph"><a href="/photo/{{p.id}}?full=1" target="_blank"><img src="/photo/{{p.id}}" loading="lazy" decoding="async" alt="{{slotname.get(p.slot,'照片')}}"></a></div>
       <textarea class="capin" rows="1" placeholder="写句注释…" oninput="grow(this)"
         onchange="post('/act/photo_cap',{id:{{p.id}},caption:this.value},false)">{{p.caption or ''}}</textarea>
     </div>
@@ -383,6 +385,7 @@ footer{text-align:center; font-size:11px; color:var(--sub); letter-spacing:.15em
 
 <script>
 const TODAY = '{{today}}';
+const CUP_ML = {{cup_ml}};
 const pages = document.getElementById('pages');
 
 function val(id){ return document.getElementById(id).value }
@@ -401,7 +404,27 @@ async function toggle(el, date, habit){
   const r = await post('/act/toggle', {date, habit});
   el.classList.toggle('on', !!r.value);
 }
-function water(date, delta){ act('/act/water', {date, delta}, date) }
+async function water(date, delta){
+  const r = await post('/act/water', {date, delta});
+  const day = document.getElementById('day-' + date);
+  const n = r.value, total = Math.max(n, 8);
+  let html = '';
+  for (let i = 0; i < total; i++) html += `<span class="cup${i < n ? ' full' : ''}"></span>`;
+  day.querySelector('.cups').innerHTML = html;
+  day.querySelector('.ml').textContent = (n * CUP_ML) + ' ml';
+}
+async function battery(date, value, el){
+  await post('/act/battery', {date, value});
+  [...el.parentElement.children].forEach((c, i)=>c.classList.toggle('on', i < value));
+}
+async function period(date, el){
+  const r = await post('/act/period', {date});
+  el.classList.toggle('on', !!r.value);
+}
+async function todoToggle(id, el){
+  const r = await post('/act/todo_toggle', {id});
+  el.classList.toggle('done', !!r.done);
+}
 function addNote(kind, content, date){
   if(!content.trim()) return;
   remember(date || currentDate());
